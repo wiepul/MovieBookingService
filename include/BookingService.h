@@ -1,6 +1,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 using namespace std;
 
@@ -47,6 +48,8 @@ public:
                             const std::vector<SeatId>& seats);
 
 private:
-    std::vector<Movie> movies;
-    std::vector<Theater> theaters;
+    std::vector<Movie> movies_;
+    std::vector<Theater> theaters_;
+    std::unordered_map<std::string, std::vector<TheaterId>>  movieToTheaters_;
+    const int kSeatsPerShowing = 20;
 };

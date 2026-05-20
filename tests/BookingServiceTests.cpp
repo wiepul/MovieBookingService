@@ -23,9 +23,9 @@ TEST(ListMovies, SortedById) {
     auto movies = svc.listMovies();
 
     test_movies = {
-        {"m1", "The Matrix"},
-        {"m2", "Inception"},
-        {"m3", "Interstellar"}
+        {"m1", "Movie1"},
+        {"m2", "Movie2"},
+        {"m3", "Movie3"}
     };
 
     EXPECT_EQ(test_movies, movies);
