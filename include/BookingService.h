@@ -4,6 +4,10 @@
 
 using namespace std;
 
+using MovieId   = std::string;
+using TheaterId = std::string;
+using SeatId    = std::string;
+
 struct Movie {
     string     id;
     std::string title;
@@ -17,11 +21,24 @@ struct Theater {
 class BookingService {
 public:
     BookingService();
+
+    // List all movies (sorted by id).
     std::vector<Movie> listMovies() const;
+
+    // Theaters showing the given movie (sorted by id). Empty if unknown movie.
     std::vector<Theater> listTheatersForMovie(std::string movieId) const;
+
+    // Seats currently available for the given (movie, theater).
+    // Empty if the showing does not exist or all seats are booked.
+    std::vector<SeatId> listAvailableSeats(std::string movieId,
+                                           std::string theaterId) const;
+
+    // Atomically book a set of seats. Succeeds only if every requested seat is
+    // currently free. Duplicates in the request and unknown seat ids fail the
+    // request with no state change.
     void bookSeats(std::string movieId,
                             std::string theaterId,
-                            const std::vector<string>& seats);
+                            const std::vector<SeatId>& seats);
 
 private:
     std::vector<Movie> movies;
