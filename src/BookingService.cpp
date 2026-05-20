@@ -1,5 +1,9 @@
 #include "BookingService.h"
 #include <algorithm>
+#include <iostream>
+#include <memory>
+
+using namespace std;
 
 BookingService::BookingService() {
     // Initialize with some dummy data
@@ -19,13 +23,28 @@ BookingService::BookingService() {
         {"m2", {"t2"}},
         {"m3", {"t3"}}
     };
+
+    auto createShowing = [this](const std::string& movieId, const std::string& theaterId) {
+        auto showing = std::make_unique<Showing>();
+        for (int i = 1; i <= kSeatsPerShowing; i++) {
+            showing->allSeats.push_back("a" + std::to_string(i));
+        }
+        showings_[movieId + "_" + theaterId] = std::move(showing);
+    };
+
+    for (const auto& m : movies_) {
+        for (const auto& tId : movieToTheaters_[m.id]) {
+            createShowing(m.id, tId);
+        }
+    }
 }
 
 std::vector<Movie> BookingService::listMovies() const {
     return movies_;
 }   
 
-std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) const { 
+std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) const {
+    std::cout << "Listing theaters for movie: " << movieId << std::endl;
     auto it = movieToTheaters_.find(movieId);
     if (it == movieToTheaters_.end()) {
         return {};
@@ -45,8 +64,28 @@ std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) c
 
 std::vector<SeatId> BookingService::listAvailableSeats(std::string movieId,
                                    std::string theaterId) const {
-return {};
-                                }
+    auto key = movieId + "_" + theaterId;
+    std::cout<<"Looking for showing with key: " << key << std::endl;
+
+    auto it = showings_.find(key);
+
+    if (it == showings_.end()) {
+        return {};
+    }
+
+    const auto& sh = it->second;    
+    
+    std::vector<SeatId> available;
+    std::cout<<"Available seats for showing " << key << ": ";
+    for (const auto& seat : sh->allSeats) {
+        if (sh->booked.find(seat) == sh->booked.end()) {
+            available.push_back(seat);
+            std::cout << seat << " ";
+        }
+    }
+    std::cout << std::endl;
+    return available;
+}
 
 BookingResult BookingService::bookSeats(std::string movieId,
                                std::string theaterId,

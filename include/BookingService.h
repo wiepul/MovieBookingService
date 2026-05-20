@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
+#include <memory>
 
 using namespace std;
 
@@ -48,8 +50,16 @@ public:
                             const std::vector<SeatId>& seats);
 
 private:
+    struct Showing {
+        std::unordered_set<SeatId> booked;
+        std::vector<SeatId>        allSeats;
+    };
+
+    std::unordered_map<std::string, std::unique_ptr<Showing>> showings_;
+    
     std::vector<Movie> movies_;
     std::vector<Theater> theaters_;
     std::unordered_map<std::string, std::vector<TheaterId>>  movieToTheaters_;
+    
     const int kSeatsPerShowing = 20;
 };
