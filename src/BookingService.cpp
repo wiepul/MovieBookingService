@@ -90,5 +90,52 @@ std::vector<SeatId> BookingService::listAvailableSeats(std::string movieId,
 BookingResult BookingService::bookSeats(std::string movieId,
                                std::string theaterId,
                                const std::vector<string>& seats) {
-    return {};
+  
+    BookingResult result{false, "", {}};
+    
+    if (seats.empty()) {
+        result.message = "No seats requested.";
+        return result;
+    }
+
+    auto key = movieId + "_" + theaterId;
+    
+    std::cout << "Attempting to book seats for showing: " << key << std::endl;
+    
+    auto it = showings_.find(key);
+
+    if (it == showings_.end()) {
+        result.message = "Showing does not exist.";
+        return result;
+    }
+
+    //reject duplicates in request
+    std::unordered_set<string> requestedSeats(seats.begin(), seats.end());
+    if (requestedSeats.size() != seats.size()) {
+        result.message = "Duplicate seat IDs in request.";
+        return result;  
+    }
+
+    // Check if all requested seats are valid and available
+    auto& sh = it->second;
+    for (const auto& seat : seats) {
+        if (find(sh->allSeats.begin(), sh->allSeats.end(), seat) == sh->allSeats.end()) {
+            result.message = "Unknown seat ID: " + seat;
+            return result; 
+        }
+
+        if (sh->booked.find(seat) != sh->booked.end()) {
+            result.message = "One of the requested seats is already booked: " + seat;
+            return result;
+        }
+    }
+    
+    // All checks passed, book the seats
+    for (const auto& seat : seats) {
+        sh->booked.insert(seat);
+    }
+    result.success = true;
+    result.bookedSeats = seats;
+    result.message = "Seats booked successfully.";
+    return result;
 }
