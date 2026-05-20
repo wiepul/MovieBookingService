@@ -19,5 +19,15 @@ add_executable(movie_booking_app
     src/BookingService.cpp
 )
 
+add_library(booking
+    src/BookingService.cpp
+)
+
 # Link include directories to target
 target_include_directories(movie_booking_app PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+option(BUILD_TESTING "Build the tests" ON)
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

@@ -1,5 +1,6 @@
 #include "BookingService.h"
 #include <gtest/gtest.h>
+#include <algorithm>
 
 static bool contains(const std::vector<SeatId>& v, const SeatId& s) {
     return std::find(v.begin(), v.end(), s) != v.end();
@@ -22,13 +23,10 @@ TEST(ListMovies, SortedById) {
     BookingService svc;
     auto movies = svc.listMovies();
 
-    test_movies = {
-        {"m1", "Movie1"},
-        {"m2", "Movie2"},
-        {"m3", "Movie3"}
-    };
-
-    EXPECT_EQ(test_movies, movies);
+    EXPECT_EQ(movies.size(), 3);
+    EXPECT_EQ(movies[0].id, "m1");
+    EXPECT_EQ(movies[1].id, "m2");
+    EXPECT_EQ(movies[2].id, "m3");
 }
 
 TEST(ListTheaters, KnownMovie) {

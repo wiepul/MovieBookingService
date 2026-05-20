@@ -14,7 +14,10 @@ void printMenu() {
 std::string prompt(const std::string& label) {
     std::cout << label;
     std::string line;
-    if (!std::getline(std::cin, line)) return {};
+    if (!std::getline(std::cin, line)) 
+    return {};
+
+    return line;
 }
 
 // This only handles commas and whitespace;
@@ -47,7 +50,10 @@ int main() {
         if (choice == "1") {
             auto movies = svc.listMovies();
 
-            if (movies.empty()) { std::cout << "No movies.\n"; return; }
+            if (movies.empty()) {
+                std::cout << "No movies.\n"; 
+                return 0; 
+            }
             
             std::cout << "Movies:\n";
             
@@ -63,7 +69,7 @@ int main() {
             
             if (theaters.empty()) {
             std::cout << "No theaters for '" << movieId << "'.\n";
-            return;
+            return 0;
             }
             
             std::cout << "Theaters showing movie " << movieId << ":\n";
@@ -81,7 +87,7 @@ int main() {
             
             if (seats.empty()) {
             std::cout << "No available seats (showing may not exist).\n";
-            return;
+            return 0;
             }
             
             std::cout << "Available (" << seats.size() << "):";
@@ -101,7 +107,7 @@ int main() {
 
             if (seats.empty()) {
                 std::cout << "No seats given.\n";
-                return;
+                return 0;
             }
 
             const auto r = svc.bookSeats(movieId, theaterId, seats);

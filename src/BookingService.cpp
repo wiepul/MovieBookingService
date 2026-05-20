@@ -18,16 +18,17 @@ std::vector<Movie> BookingService::listMovies() const {
     return movies_;
 }   
 
-std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) const {
-
-
-    
-
+std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) const { 
     return theaters_;
 }
+
+std::vector<SeatId> BookingService::listAvailableSeats(std::string movieId,
+                                   std::string theaterId) const {
+return {};
+                                }
 
 BookingResult BookingService::bookSeats(std::string movieId,
                                std::string theaterId,
                                const std::vector<string>& seats) {
-    // Booking logic not implemented yet
+    return {};
 }
