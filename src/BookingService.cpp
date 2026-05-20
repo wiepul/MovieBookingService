@@ -23,7 +23,7 @@ std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) c
     return theaters;
 }
 
-void BookingService::bookSeats(std::string movieId,
+BookingResult BookingService::bookSeats(std::string movieId,
                                std::string theaterId,
                                const std::vector<string>& seats) {
     // Booking logic not implemented yet
