@@ -18,6 +18,12 @@ struct Theater {
     std::string name;
 };
 
+struct BookingResult {
+    bool                 success;
+    std::string          message;
+    std::vector<SeatId>  bookedSeats;
+};
+
 class BookingService {
 public:
     BookingService();
@@ -33,10 +39,10 @@ public:
     std::vector<SeatId> listAvailableSeats(std::string movieId,
                                            std::string theaterId) const;
 
-    // Atomically book a set of seats. Succeeds only if every requested seat is
+    // Book a set of seats. Succeeds only if every requested seat is
     // currently free. Duplicates in the request and unknown seat ids fail the
     // request with no state change.
-    void bookSeats(std::string movieId,
+    BookingResult bookSeats(std::string movieId,
                             std::string theaterId,
                             const std::vector<SeatId>& seats);
 
