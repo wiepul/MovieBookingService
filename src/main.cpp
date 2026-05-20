@@ -11,6 +11,29 @@ void printMenu() {
         " 5. Exit\n";
 }
 
+std::string prompt(const std::string& label) {
+    std::cout << label;
+    std::string line;
+    if (!std::getline(std::cin, line)) return {};
+}
+
+// This only handles commas and whitespace;
+std::vector<std::string> parseSeats(const std::string& s) {
+    std::vector<std::string> out;
+    std::string cur;
+    for (char c : s) {
+        if (c == ',' || std::isspace(static_cast<unsigned char>(c))) {
+            if (!cur.empty()) {
+                 out.push_back(cur); cur.clear(); 
+            }
+        } else {
+            cur.push_back(c);
+        }
+    }
+    if (!cur.empty()) out.push_back(cur);
+    return out;
+}
+
 int main() {
     BookingService svc;
     std::cout << "Movie Booking CLI. Pick an option from the menu.\n";
@@ -34,10 +57,7 @@ int main() {
 
         } else if (choice == "2") {
 
-            std::cout << "Enter movie ID: ";
-            std::string movieId;
-            
-            if (!std::getline(std::cin, movieId)) break;
+            auto movieId = prompt("Enter movie ID: ");
             
             auto theaters = svc.listTheatersForMovie(movieId);
             
@@ -53,17 +73,11 @@ int main() {
             }
 
         } else if (choice == "3") {
-            std::cout << "Enter movie ID: ";
-            std::string movieId;
-            
-            if (!std::getline(std::cin, movieId)) break;
+            auto movieId = prompt("Enter movie ID: ");
 
-            std::cout << "Enter Theater ID: ";
-            std::string theaterId;
-            
-            if (!std::getline(std::cin, theaterId)) break;
+            auto theaterId = prompt("Enter Theater ID: ");
 
-            const auto seats = svc.listAvailableSeats(m, t);
+            const auto seats = svc.listAvailableSeats(movieId, theaterId);
             
             if (seats.empty()) {
             std::cout << "No available seats (showing may not exist).\n";
@@ -78,8 +92,9 @@ int main() {
             std::cout << '\n';
             
         } else if (choice == "4") {
-            const auto m = prompt("Movie id: ");
-            const auto t = prompt("Theater id: ");
+            
+            const auto movieId = prompt("Movie id: ");
+            const auto theaterId = prompt("Theater id: ");
             const auto line = prompt("Seats (e.g. a1,a2): ");
             
             const auto seats = parseSeats(line);
@@ -89,7 +104,7 @@ int main() {
                 return;
             }
 
-            const auto r = svc.bookSeats(m, t, seats);
+            const auto r = svc.bookSeats(movieId, theaterId, seats);
             
             if (r.success) {
                 std::cout << "Booked:";
