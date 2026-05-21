@@ -12,13 +12,13 @@ using SeatId = std::string;
 
 struct Movie
 {
-    string id;
+    std::string id;
     std::string title;
 };
 
 struct Theater
 {
-    string id;
+    std::string id;
     std::string name;
 };
 
