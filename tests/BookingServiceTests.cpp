@@ -116,3 +116,30 @@ TEST(Book, ShowingsAreIsolated) {
     // Same seat id in a different showing must still be free.
     EXPECT_TRUE(contains(svc.listAvailableSeats("m1", "t2"), "a1"));
 }
+
+
+//Concurrent booking tests
+
+// 50 threads race for the same seat. Exactly one must win.
+TEST(Book, ConcurrentBooking) {
+    BookingService svc;
+    const int numThreads = 50;
+    std::vector<std::thread> threads;
+    std::vector<bool> results(numThreads);
+
+    for (int i = 0; i < numThreads; ++i) {
+        threads.emplace_back(
+            [&svc, &results, i] {
+            results[i] = svc.bookSeats("m1", "t1", {"a1"}).success;
+        }
+    );
+    }
+
+    for (auto& t : threads)
+        t.join();
+
+    int successCount = std::count(results.begin(), results.end(), true);
+    EXPECT_EQ(successCount, 1);
+}
+
+
