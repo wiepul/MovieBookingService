@@ -3,24 +3,27 @@
 #include <algorithm>
 #include <thread>
 
-static bool contains(const std::vector<SeatId>& v, const SeatId& s) {
+static bool contains(const std::vector<SeatId> &v, const SeatId &s)
+{
     return std::find(v.begin(), v.end(), s) != v.end();
 }
 
-TEST(ListMovies, ReturnsSeeded) {
+TEST(ListMovies, ReturnsSeeded)
+{
     BookingService svc;
     auto movies = svc.listMovies();
     EXPECT_EQ(movies.size(), 3);
 
     std::set<MovieId> ids;
 
-    for (const auto& m : movies)
+    for (const auto &m : movies)
         ids.insert(m.id);
 
     EXPECT_EQ(ids, (std::set<MovieId>{"m1", "m2", "m3"}));
 }
 
-TEST(ListMovies, SortedById) {
+TEST(ListMovies, SortedById)
+{
     BookingService svc;
     auto movies = svc.listMovies();
 
@@ -30,30 +33,35 @@ TEST(ListMovies, SortedById) {
     EXPECT_EQ(movies[2].id, "m3");
 }
 
-TEST(ListTheaters, KnownMovie) {
+TEST(ListTheaters, KnownMovie)
+{
     BookingService svc;
     auto theater = svc.listTheatersForMovie("m1");
     EXPECT_EQ(theater.size(), 2);
 }
 
-TEST(ListTheaters, UnknownMovie) {
+TEST(ListTheaters, UnknownMovie)
+{
     BookingService svc;
     EXPECT_TRUE(svc.listTheatersForMovie("DOES_NOT_EXIST").empty());
 }
 
-TEST(ListSeats, AllAvailableInitially) {
+TEST(ListSeats, AllAvailableInitially)
+{
     BookingService svc;
     auto seats = svc.listAvailableSeats("m1", "t1");
     EXPECT_EQ(seats.size(), 20);
 }
 
-TEST(ListSeats, UnknownShowing) {
+TEST(ListSeats, UnknownShowing)
+{
     BookingService svc;
-    EXPECT_TRUE(svc.listAvailableSeats("m1", "t3").empty()); 
-    EXPECT_TRUE(svc.listAvailableSeats("NOPE",  "t1").empty());
+    EXPECT_TRUE(svc.listAvailableSeats("m1", "t3").empty());
+    EXPECT_TRUE(svc.listAvailableSeats("NOPE", "t1").empty());
 }
 
-TEST(Book, SingleSeat) {
+TEST(Book, SingleSeat)
+{
     BookingService svc;
     auto r = svc.bookSeats("m1", "t1", {"a1"});
     ASSERT_TRUE(r.success);
@@ -61,36 +69,42 @@ TEST(Book, SingleSeat) {
     EXPECT_FALSE(contains(svc.listAvailableSeats("m1", "t1"), "a1"));
 }
 
-TEST(Book, MultipleSeats) {
+TEST(Book, MultipleSeats)
+{
     BookingService svc;
     auto r = svc.bookSeats("m1", "t1", {"a1", "a2", "a3"});
     ASSERT_TRUE(r.success);
     EXPECT_EQ(r.bookedSeats.size(), 3);
 }
 
-TEST(Book, EmptyRequestFails) {
+TEST(Book, EmptyRequestFails)
+{
     BookingService svc;
     EXPECT_FALSE(svc.bookSeats("m1", "t1", {}).success);
 }
 
-TEST(Book, UnknownShowingFails) {
+TEST(Book, UnknownShowingFails)
+{
     BookingService svc;
     EXPECT_FALSE(svc.bookSeats("m1", "t3", {"a1"}).success);
 }
 
-TEST(Book, InvalidSeatIdFails) {
+TEST(Book, InvalidSeatIdFails)
+{
     BookingService svc;
     EXPECT_FALSE(svc.bookSeats("m1", "t1", {"a99"}).success);
-    
-    EXPECT_EQ(svc.listAvailableSeats("m1", "t1").size(),20);
+
+    EXPECT_EQ(svc.listAvailableSeats("m1", "t1").size(), 20);
 }
 
-TEST(Book, DuplicatesInRequestFail) {
+TEST(Book, DuplicatesInRequestFail)
+{
     BookingService svc;
     EXPECT_FALSE(svc.bookSeats("m1", "t1", {"a1", "a2", "a1"}).success);
 }
 
-TEST(Book, AlreadyBookedFails) {
+TEST(Book, AlreadyBookedFails)
+{
     BookingService svc;
     ASSERT_TRUE(svc.bookSeats("m1", "t1", {"a1"}).success);
     EXPECT_FALSE(svc.bookSeats("m1", "t1", {"a1"}).success);
@@ -98,7 +112,8 @@ TEST(Book, AlreadyBookedFails) {
 
 // The key correctness property: a conflict in any one seat must roll back
 // the whole request.
-TEST(Book, AllOrNothing) {
+TEST(Book, AllOrNothing)
+{
     BookingService svc;
     ASSERT_TRUE(svc.bookSeats("m1", "t1", {"a2"}).success);
 
@@ -111,36 +126,36 @@ TEST(Book, AllOrNothing) {
     EXPECT_TRUE(contains(avail, "a3"));
 }
 
-TEST(Book, ShowingsAreIsolated) {
+TEST(Book, ShowingsAreIsolated)
+{
     BookingService svc;
     ASSERT_TRUE(svc.bookSeats("m1", "t1", {"a1"}).success);
     // Same seat id in a different showing must still be free.
     EXPECT_TRUE(contains(svc.listAvailableSeats("m1", "t2"), "a1"));
 }
 
-
-//Concurrent booking tests
+// Concurrent booking tests
 
 // 50 threads race for the same seat. Exactly one must win.
-TEST(Book, ConcurrentBooking) {
+TEST(Book, ConcurrentBooking)
+{
     BookingService svc;
     const int numThreads = 50;
     std::vector<std::thread> threads;
     std::vector<bool> results(numThreads);
 
-    for (int i = 0; i < numThreads; ++i) {
+    for (int i = 0; i < numThreads; ++i)
+    {
         threads.emplace_back(
-            [&svc, &results, i] {
-            results[i] = svc.bookSeats("m1", "t1", {"a1"}).success;
-        }
-    );
+            [&svc, &results, i]
+            {
+                results[i] = svc.bookSeats("m1", "t1", {"a1"}).success;
+            });
     }
 
-    for (auto& t : threads)
+    for (auto &t : threads)
         t.join();
 
     int successCount = std::count(results.begin(), results.end(), true);
     EXPECT_EQ(successCount, 1);
 }
-
-
