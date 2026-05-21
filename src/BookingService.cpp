@@ -5,57 +5,63 @@
 
 using namespace std;
 
-BookingService::BookingService() {
+BookingService::BookingService()
+{
     // Initialize with some dummy data
     movies_ = {
         {"m1", "Movie1"},
         {"m2", "Movie2"},
-        {"m3", "Movie3"}
-    };
+        {"m3", "Movie3"}};
     theaters_ = {
         {"t1", "Cinema One"},
         {"t2", "Cinema Two"},
-        {"t3", "Cinema Three"}
-    };
+        {"t3", "Cinema Three"}};
 
     movieToTheaters_ = {
         {"m1", {"t1", "t2"}},
         {"m2", {"t2"}},
-        {"m3", {"t3"}}
-    };
+        {"m3", {"t3"}}};
 
-    auto createShowing = [this](const std::string& movieId, const std::string& theaterId) {
+    auto createShowing = [this](const std::string &movieId, const std::string &theaterId)
+    {
         auto showing = std::make_unique<Showing>();
-        for (int i = 1; i <= kSeatsPerShowing; i++) {
+        for (int i = 1; i <= kSeatsPerShowing; i++)
+        {
             showing->allSeats.push_back("a" + std::to_string(i));
         }
         showings_[movieId + "_" + theaterId] = std::move(showing);
     };
 
-    for (const auto& m : movies_) {
-        for (const auto& tId : movieToTheaters_[m.id]) {
+    for (const auto &m : movies_)
+    {
+        for (const auto &tId : movieToTheaters_[m.id])
+        {
             createShowing(m.id, tId);
         }
     }
 }
 
-std::vector<Movie> BookingService::listMovies() const {
+std::vector<Movie> BookingService::listMovies() const
+{
     return movies_;
-}   
+}
 
-std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) const {
+std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) const
+{
     std::cout << "Listing theaters for movie: " << movieId << std::endl;
     auto it = movieToTheaters_.find(movieId);
-    if (it == movieToTheaters_.end()) {
+    if (it == movieToTheaters_.end())
+    {
         return {};
     }
-    
+
     std::vector<Theater> result;
-    for (const auto& theaterId : it->second) {
-        auto theaterIt = find_if(theaters_.begin(), theaters_.end(), [&](const Theater& t) {
-            return t.id == theaterId;
-        });
-        if (theaterIt != theaters_.end()) {
+    for (const auto &theaterId : it->second)
+    {
+        auto theaterIt = find_if(theaters_.begin(), theaters_.end(), [&](const Theater &t)
+                                 { return t.id == theaterId; });
+        if (theaterIt != theaters_.end())
+        {
             result.push_back(*theaterIt);
         }
     }
@@ -63,23 +69,27 @@ std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) c
 }
 
 std::vector<SeatId> BookingService::listAvailableSeats(std::string movieId,
-                                   std::string theaterId) const {
+                                                       std::string theaterId) const
+{
     auto key = movieId + "_" + theaterId;
-    std::cout<<"Looking for showing with key: " << key << std::endl;
+    std::cout << "Looking for showing with key: " << key << std::endl;
 
     auto it = showings_.find(key);
 
-    if (it == showings_.end()) {
+    if (it == showings_.end())
+    {
         return {};
     }
 
-    const auto& sh = it->second;
+    const auto &sh = it->second;
     std::lock_guard<std::mutex> lock(sh->mutex);
-    
+
     std::vector<SeatId> available;
-    std::cout<<"Available seats for showing " << key << ": ";
-    for (const auto& seat : sh->allSeats) {
-        if (sh->booked.find(seat) == sh->booked.end()) {
+    std::cout << "Available seats for showing " << key << ": ";
+    for (const auto &seat : sh->allSeats)
+    {
+        if (sh->booked.find(seat) == sh->booked.end())
+        {
             available.push_back(seat);
             std::cout << seat << " ";
         }
@@ -89,52 +99,60 @@ std::vector<SeatId> BookingService::listAvailableSeats(std::string movieId,
 }
 
 BookingResult BookingService::bookSeats(std::string movieId,
-                               std::string theaterId,
-                               const std::vector<string>& seats) {
-  
+                                        std::string theaterId,
+                                        const std::vector<string> &seats)
+{
+
     BookingResult result{false, "", {}};
-    
-    if (seats.empty()) {
+
+    if (seats.empty())
+    {
         result.message = "No seats requested.";
         return result;
     }
 
     auto key = movieId + "_" + theaterId;
-    
+
     std::cout << "Attempting to book seats for showing: " << key << std::endl;
-    
+
     auto it = showings_.find(key);
 
-    if (it == showings_.end()) {
+    if (it == showings_.end())
+    {
         result.message = "Showing does not exist.";
         return result;
     }
 
-    //reject duplicates in request
+    // reject duplicates in request
     std::unordered_set<string> requestedSeats(seats.begin(), seats.end());
-    if (requestedSeats.size() != seats.size()) {
+    if (requestedSeats.size() != seats.size())
+    {
         result.message = "Duplicate seat IDs in request.";
-        return result;  
+        return result;
     }
 
     // Check if all requested seats are valid and available
-    auto& sh = it->second;
-    
+    auto &sh = it->second;
+
     std::lock_guard<std::mutex> lock(sh->mutex); // Lock the showing for the duration of this booking attempt
-    for (const auto& seat : seats) {
-        if (find(sh->allSeats.begin(), sh->allSeats.end(), seat) == sh->allSeats.end()) {
+    for (const auto &seat : seats)
+    {
+        if (find(sh->allSeats.begin(), sh->allSeats.end(), seat) == sh->allSeats.end())
+        {
             result.message = "Unknown seat ID: " + seat;
-            return result; 
+            return result;
         }
 
-        if (sh->booked.find(seat) != sh->booked.end()) {
+        if (sh->booked.find(seat) != sh->booked.end())
+        {
             result.message = "One of the requested seats is already booked: " + seat;
             return result;
         }
     }
-    
+
     // All checks passed, book the seats
-    for (const auto& seat : seats) {
+    for (const auto &seat : seats)
+    {
         sh->booked.insert(seat);
     }
     result.success = true;

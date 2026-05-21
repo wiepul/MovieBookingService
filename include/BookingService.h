@@ -6,27 +6,31 @@
 #include <memory>
 #include <mutex>
 
-using MovieId   = std::string;
+using MovieId = std::string;
 using TheaterId = std::string;
-using SeatId    = std::string;
+using SeatId = std::string;
 
-struct Movie {
-    string     id;
+struct Movie
+{
+    string id;
     std::string title;
 };
 
-struct Theater {
-    string   id;
+struct Theater
+{
+    string id;
     std::string name;
 };
 
-struct BookingResult {
-    bool                 success;
-    std::string          message;
-    std::vector<SeatId>  bookedSeats;
+struct BookingResult
+{
+    bool success;
+    std::string message;
+    std::vector<SeatId> bookedSeats;
 };
 
-class BookingService {
+class BookingService
+{
 public:
     BookingService();
 
@@ -46,20 +50,21 @@ public:
     // request with no state change.
     BookingResult bookSeats(std::string movieId,
                             std::string theaterId,
-                            const std::vector<SeatId>& seats);
+                            const std::vector<SeatId> &seats);
 
 private:
-    struct Showing {
-        std::mutex                 mutex;
+    struct Showing
+    {
+        std::mutex mutex;
         std::unordered_set<SeatId> booked;
-        std::vector<SeatId>        allSeats;
+        std::vector<SeatId> allSeats;
     };
 
     std::unordered_map<std::string, std::unique_ptr<Showing>> showings_;
-    
+
     std::vector<Movie> movies_;
     std::vector<Theater> theaters_;
-    std::unordered_map<std::string, std::vector<TheaterId>>  movieToTheaters_;
-    
+    std::unordered_map<std::string, std::vector<TheaterId>> movieToTheaters_;
+
     const int kSeatsPerShowing = 20;
 };
