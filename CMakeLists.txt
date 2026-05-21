@@ -14,17 +14,19 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Add executable
-add_executable(movie_booking_app
+add_library(booking STATIC
+    src/BookingService.cpp
+)
+
+# Public include for the library
+target_include_directories(booking PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
+# Separate CLI executable that links the library
+add_executable(movie_booking_cli
     src/main.cpp
-    src/BookingService.cpp
 )
 
-add_library(booking
-    src/BookingService.cpp
-)
-
-# Link include directories to target
-target_include_directories(movie_booking_app PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(movie_booking_cli PRIVATE booking)
 
 option(BUILD_TESTING "Build the tests" ON)
 if(BUILD_TESTING)

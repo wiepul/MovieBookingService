@@ -6,8 +6,6 @@
 #include <memory>
 #include <mutex>
 
-using namespace std;
-
 using MovieId   = std::string;
 using TheaterId = std::string;
 using SeatId    = std::string;
