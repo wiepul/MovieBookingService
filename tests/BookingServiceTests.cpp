@@ -1,6 +1,7 @@
 #include "BookingService.h"
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <thread>
 
 static bool contains(const std::vector<SeatId>& v, const SeatId& s) {
     return std::find(v.begin(), v.end(), s) != v.end();
