@@ -73,7 +73,8 @@ std::vector<SeatId> BookingService::listAvailableSeats(std::string movieId,
         return {};
     }
 
-    const auto& sh = it->second;    
+    const auto& sh = it->second;
+    std::lock_guard<std::mutex> lock(sh->mutex);
     
     std::vector<SeatId> available;
     std::cout<<"Available seats for showing " << key << ": ";
@@ -118,6 +119,8 @@ BookingResult BookingService::bookSeats(std::string movieId,
 
     // Check if all requested seats are valid and available
     auto& sh = it->second;
+    
+    std::lock_guard<std::mutex> lock(sh->mutex); // Lock the showing for the duration of this booking attempt
     for (const auto& seat : seats) {
         if (find(sh->allSeats.begin(), sh->allSeats.end(), seat) == sh->allSeats.end()) {
             result.message = "Unknown seat ID: " + seat;

@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
+#include <mutex>
 
 using namespace std;
 
@@ -51,6 +52,7 @@ public:
 
 private:
     struct Showing {
+        std::mutex                 mutex;
         std::unordered_set<SeatId> booked;
         std::vector<SeatId>        allSeats;
     };
