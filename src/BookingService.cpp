@@ -6,6 +6,7 @@
 namespace
 {
 
+// Converts internal error codes into user-facing messages.
 std::string bookingErrorMessage(BookingError error, const SeatId &seat = {})
 {
     switch (error)
@@ -35,6 +36,7 @@ BookingResult makeFailure(BookingError error, const SeatId &seat = {})
 
 void BookingService::seedDemoData()
 {
+    // Seed a small in-memory catalog used by the demo CLI and tests.
     movies_ = {
         {"m1", "Movie1"},
         {"m2", "Movie2"},
@@ -57,6 +59,7 @@ void BookingService::seedDemoData()
     auto createShowing = [this](const std::string &movieId, const std::string &theaterId)
     {
         auto showing = std::make_unique<Showing>();
+        // Create deterministic seat IDs: a1..a20.
         for (int i = 1; i <= kSeatsPerShowing; ++i)
         {
             showing->allSeats.push_back("a" + std::to_string(i));
@@ -75,6 +78,7 @@ void BookingService::seedDemoData()
 
 BookingService::BookingService()
 {
+    // Build initial in-memory state at startup.
     seedDemoData();
 }
 
@@ -85,6 +89,7 @@ std::vector<Movie> BookingService::listMovies() const
 
 std::vector<Theater> BookingService::listTheatersForMovie(const MovieId &movieId) const
 {
+    // Resolve theater IDs for the movie, then map them to theater objects.
     const auto it = movieToTheaters_.find(movieId);
     if (it == movieToTheaters_.end())
     {
@@ -103,6 +108,7 @@ std::vector<Theater> BookingService::listTheatersForMovie(const MovieId &movieId
         }
     }
 
+    // Return a stable order to simplify test assertions & readability.
     std::sort(result.begin(), result.end(),
               [](const Theater &a, const Theater &b) { return a.id < b.id; });
     return result;
@@ -119,6 +125,7 @@ std::vector<SeatId> BookingService::listAvailableSeats(const MovieId &movieId,
     }
 
     const auto &showing = it->second;
+    // Lock per-showing so reads are consistent with concurrent bookings.
     std::lock_guard<std::mutex> lock(showing->mutex);
 
     std::vector<SeatId> available;
@@ -136,6 +143,7 @@ BookingResult BookingService::bookSeats(const MovieId &movieId,
                                         const TheaterId &theaterId,
                                         const std::vector<SeatId> &seats)
 {
+    // Return early on invalid request shape before touching shared state.
     if (seats.empty())
     {
         return makeFailure(BookingError::EmptyRequest);
@@ -155,8 +163,10 @@ BookingResult BookingService::bookSeats(const MovieId &movieId,
     }
 
     auto &showing = it->second;
+    // Validate under one lock.
     std::lock_guard<std::mutex> lock(showing->mutex);
 
+    // Validate every seat in the request.
     for (const auto &seat : seats)
     {
         if (std::find(showing->allSeats.begin(), showing->allSeats.end(), seat) ==
@@ -171,6 +181,7 @@ BookingResult BookingService::bookSeats(const MovieId &movieId,
         }
     }
 
+    // Commit only after the full request is validated.
     for (const auto &seat : seats)
     {
         showing->booked.insert(seat);
