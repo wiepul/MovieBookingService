@@ -37,7 +37,7 @@ MovieBookingService/
 
 ### Windows
 
-From a Developer Command Prompt:
+Option 1: from a Visual Studio Developer Command Prompt with MSVC installed:
 
 ```cmd
 mkdir build
@@ -52,6 +52,22 @@ Tests:
 mkdir build
 cd build
 ctest -C Release --output-on-failure
+```
+
+Option 2: from an MSYS2 / MinGW shell or when using GCC/Clang on Windows:
+
+```bash
+mkdir build
+cmake -G "MinGW Makefiles" -S . -B build
+cmake --build build
+./build/bin/movie_booking_cli.exe
+```
+
+Tests:
+
+```bash
+cd build
+ctest --output-on-failure
 ```
 
 ### Linux / macOS
