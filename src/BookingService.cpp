@@ -1,13 +1,40 @@
 #include "BookingService.h"
+
 #include <algorithm>
-#include <iostream>
 #include <memory>
 
-using namespace std;
-
-BookingService::BookingService()
+namespace
 {
-    // Initialize with some dummy data
+
+std::string bookingErrorMessage(BookingError error, const SeatId &seat = {})
+{
+    switch (error)
+    {
+    case BookingError::None:
+        return "Seats booked successfully.";
+    case BookingError::EmptyRequest:
+        return "No seats requested.";
+    case BookingError::UnknownShowing:
+        return "Showing does not exist.";
+    case BookingError::DuplicateSeats:
+        return "Duplicate seat IDs in request.";
+    case BookingError::UnknownSeat:
+        return "Unknown seat ID: " + seat;
+    case BookingError::SeatAlreadyBooked:
+        return "One of the requested seats is already booked: " + seat;
+    }
+    return "Booking failed.";
+}
+
+BookingResult makeFailure(BookingError error, const SeatId &seat = {})
+{
+    return BookingResult{false, error, bookingErrorMessage(error, seat), {}};
+}
+
+} // namespace
+
+void BookingService::seedDemoData()
+{
     movies_ = {
         {"m1", "Movie1"},
         {"m2", "Movie2"},
@@ -22,23 +49,33 @@ BookingService::BookingService()
         {"m2", {"t2"}},
         {"m3", {"t3"}}};
 
+    std::sort(movies_.begin(), movies_.end(),
+              [](const Movie &a, const Movie &b) { return a.id < b.id; });
+    std::sort(theaters_.begin(), theaters_.end(),
+              [](const Theater &a, const Theater &b) { return a.id < b.id; });
+
     auto createShowing = [this](const std::string &movieId, const std::string &theaterId)
     {
         auto showing = std::make_unique<Showing>();
-        for (int i = 1; i <= kSeatsPerShowing; i++)
+        for (int i = 1; i <= kSeatsPerShowing; ++i)
         {
             showing->allSeats.push_back("a" + std::to_string(i));
         }
         showings_[movieId + "_" + theaterId] = std::move(showing);
     };
 
-    for (const auto &m : movies_)
+    for (const auto &movie : movies_)
     {
-        for (const auto &tId : movieToTheaters_[m.id])
+        for (const auto &theaterId : movieToTheaters_[movie.id])
         {
-            createShowing(m.id, tId);
+            createShowing(movie.id, theaterId);
         }
     }
+}
+
+BookingService::BookingService()
+{
+    seedDemoData();
 }
 
 std::vector<Movie> BookingService::listMovies() const
@@ -46,10 +83,9 @@ std::vector<Movie> BookingService::listMovies() const
     return movies_;
 }
 
-std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) const
+std::vector<Theater> BookingService::listTheatersForMovie(const MovieId &movieId) const
 {
-    std::cout << "Listing theaters for movie: " << movieId << std::endl;
-    auto it = movieToTheaters_.find(movieId);
+    const auto it = movieToTheaters_.find(movieId);
     if (it == movieToTheaters_.end())
     {
         return {};
@@ -58,105 +94,88 @@ std::vector<Theater> BookingService::listTheatersForMovie(std::string movieId) c
     std::vector<Theater> result;
     for (const auto &theaterId : it->second)
     {
-        auto theaterIt = find_if(theaters_.begin(), theaters_.end(), [&](const Theater &t)
-                                 { return t.id == theaterId; });
+        const auto theaterIt = std::find_if(
+            theaters_.begin(), theaters_.end(),
+            [&](const Theater &t) { return t.id == theaterId; });
         if (theaterIt != theaters_.end())
         {
             result.push_back(*theaterIt);
         }
     }
+
+    std::sort(result.begin(), result.end(),
+              [](const Theater &a, const Theater &b) { return a.id < b.id; });
     return result;
 }
 
-std::vector<SeatId> BookingService::listAvailableSeats(std::string movieId,
-                                                       std::string theaterId) const
+std::vector<SeatId> BookingService::listAvailableSeats(const MovieId &movieId,
+                                                       const TheaterId &theaterId) const
 {
-    auto key = movieId + "_" + theaterId;
-    std::cout << "Looking for showing with key: " << key << std::endl;
-
-    auto it = showings_.find(key);
-
+    const auto key = movieId + "_" + theaterId;
+    const auto it = showings_.find(key);
     if (it == showings_.end())
     {
         return {};
     }
 
-    const auto &sh = it->second;
-    std::lock_guard<std::mutex> lock(sh->mutex);
+    const auto &showing = it->second;
+    std::lock_guard<std::mutex> lock(showing->mutex);
 
     std::vector<SeatId> available;
-    std::cout << "Available seats for showing " << key << ": ";
-    for (const auto &seat : sh->allSeats)
+    for (const auto &seat : showing->allSeats)
     {
-        if (sh->booked.find(seat) == sh->booked.end())
+        if (showing->booked.find(seat) == showing->booked.end())
         {
             available.push_back(seat);
-            std::cout << seat << " ";
         }
     }
-    std::cout << std::endl;
     return available;
 }
 
-BookingResult BookingService::bookSeats(std::string movieId,
-                                        std::string theaterId,
-                                        const std::vector<string> &seats)
+BookingResult BookingService::bookSeats(const MovieId &movieId,
+                                        const TheaterId &theaterId,
+                                        const std::vector<SeatId> &seats)
 {
-
-    BookingResult result{false, "", {}};
-
     if (seats.empty())
     {
-        result.message = "No seats requested.";
-        return result;
+        return makeFailure(BookingError::EmptyRequest);
     }
 
-    auto key = movieId + "_" + theaterId;
-
-    std::cout << "Attempting to book seats for showing: " << key << std::endl;
-
-    auto it = showings_.find(key);
-
+    const auto key = movieId + "_" + theaterId;
+    const auto it = showings_.find(key);
     if (it == showings_.end())
     {
-        result.message = "Showing does not exist.";
-        return result;
+        return makeFailure(BookingError::UnknownShowing);
     }
 
-    // reject duplicates in request
-    std::unordered_set<string> requestedSeats(seats.begin(), seats.end());
+    const std::unordered_set<SeatId> requestedSeats(seats.begin(), seats.end());
     if (requestedSeats.size() != seats.size())
     {
-        result.message = "Duplicate seat IDs in request.";
-        return result;
+        return makeFailure(BookingError::DuplicateSeats);
     }
 
-    // Check if all requested seats are valid and available
-    auto &sh = it->second;
+    auto &showing = it->second;
+    std::lock_guard<std::mutex> lock(showing->mutex);
 
-    std::lock_guard<std::mutex> lock(sh->mutex); // Lock the showing for the duration of this booking attempt
     for (const auto &seat : seats)
     {
-        if (find(sh->allSeats.begin(), sh->allSeats.end(), seat) == sh->allSeats.end())
+        if (std::find(showing->allSeats.begin(), showing->allSeats.end(), seat) ==
+            showing->allSeats.end())
         {
-            result.message = "Unknown seat ID: " + seat;
-            return result;
+            return makeFailure(BookingError::UnknownSeat, seat);
         }
 
-        if (sh->booked.find(seat) != sh->booked.end())
+        if (showing->booked.find(seat) != showing->booked.end())
         {
-            result.message = "One of the requested seats is already booked: " + seat;
-            return result;
+            return makeFailure(BookingError::SeatAlreadyBooked, seat);
         }
     }
 
-    // All checks passed, book the seats
     for (const auto &seat : seats)
     {
-        sh->booked.insert(seat);
+        showing->booked.insert(seat);
     }
-    result.success = true;
-    result.bookedSeats = seats;
-    result.message = "Seats booked successfully.";
-    return result;
+
+    return BookingResult{true, BookingError::None, bookingErrorMessage(BookingError::None),
+                         seats};
 }

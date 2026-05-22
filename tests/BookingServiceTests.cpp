@@ -33,11 +33,13 @@ TEST(ListMovies, SortedById)
     EXPECT_EQ(movies[2].id, "m3");
 }
 
-TEST(ListTheaters, KnownMovie)
+TEST(ListTheaters, KnownMovieSorted)
 {
     BookingService svc;
-    auto theater = svc.listTheatersForMovie("m1");
-    EXPECT_EQ(theater.size(), 2);
+    const auto theaters = svc.listTheatersForMovie("m1");
+    ASSERT_EQ(theaters.size(), 2);
+    EXPECT_EQ(theaters[0].id, "t1");
+    EXPECT_EQ(theaters[1].id, "t2");
 }
 
 TEST(ListTheaters, UnknownMovie)
@@ -63,8 +65,9 @@ TEST(ListSeats, UnknownShowing)
 TEST(Book, SingleSeat)
 {
     BookingService svc;
-    auto r = svc.bookSeats("m1", "t1", {"a1"});
+    const auto r = svc.bookSeats("m1", "t1", {"a1"});
     ASSERT_TRUE(r.success);
+    EXPECT_EQ(r.error, BookingError::None);
     EXPECT_EQ(r.bookedSeats, std::vector<SeatId>{"a1"});
     EXPECT_FALSE(contains(svc.listAvailableSeats("m1", "t1"), "a1"));
 }
@@ -80,19 +83,25 @@ TEST(Book, MultipleSeats)
 TEST(Book, EmptyRequestFails)
 {
     BookingService svc;
-    EXPECT_FALSE(svc.bookSeats("m1", "t1", {}).success);
+    const auto r = svc.bookSeats("m1", "t1", {});
+    EXPECT_FALSE(r.success);
+    EXPECT_EQ(r.error, BookingError::EmptyRequest);
 }
 
 TEST(Book, UnknownShowingFails)
 {
     BookingService svc;
-    EXPECT_FALSE(svc.bookSeats("m1", "t3", {"a1"}).success);
+    const auto r = svc.bookSeats("m1", "t3", {"a1"});
+    EXPECT_FALSE(r.success);
+    EXPECT_EQ(r.error, BookingError::UnknownShowing);
 }
 
 TEST(Book, InvalidSeatIdFails)
 {
     BookingService svc;
-    EXPECT_FALSE(svc.bookSeats("m1", "t1", {"a99"}).success);
+    const auto r = svc.bookSeats("m1", "t1", {"a99"});
+    EXPECT_FALSE(r.success);
+    EXPECT_EQ(r.error, BookingError::UnknownSeat);
 
     EXPECT_EQ(svc.listAvailableSeats("m1", "t1").size(), 20);
 }
@@ -100,14 +109,18 @@ TEST(Book, InvalidSeatIdFails)
 TEST(Book, DuplicatesInRequestFail)
 {
     BookingService svc;
-    EXPECT_FALSE(svc.bookSeats("m1", "t1", {"a1", "a2", "a1"}).success);
+    const auto r = svc.bookSeats("m1", "t1", {"a1", "a2", "a1"});
+    EXPECT_FALSE(r.success);
+    EXPECT_EQ(r.error, BookingError::DuplicateSeats);
 }
 
 TEST(Book, AlreadyBookedFails)
 {
     BookingService svc;
     ASSERT_TRUE(svc.bookSeats("m1", "t1", {"a1"}).success);
-    EXPECT_FALSE(svc.bookSeats("m1", "t1", {"a1"}).success);
+    const auto r = svc.bookSeats("m1", "t1", {"a1"});
+    EXPECT_FALSE(r.success);
+    EXPECT_EQ(r.error, BookingError::SeatAlreadyBooked);
 }
 
 // The key correctness property: a conflict in any one seat must roll back
