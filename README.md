@@ -1,8 +1,8 @@
 # Movie Booking Service
 
-A small C++14 backend for booking movie seats, exposed as a static library and embedded in a simple CLI front-end.
+A small C++14 backend for booking movie seats, exposed as a static library (`booking`) and embedded in a simple CLI front-end (`movie_booking_cli`).
 
-> The project builds with CMake and has a GoogleTest-based test suite. The tests are fetched via CMake FetchContent.
+>The project builds with CMake and has a GoogleTest-based test suite (`booking_tests`). Tests are fetched via CMake FetchContent (GoogleTest v1.14.0).
 
 ## What it does
 
@@ -17,6 +17,8 @@ A small C++14 backend for booking movie seats, exposed as a static library and e
 ```
 MovieBookingService/
 ├── CMakeLists.txt
+├── Dockerfile
+├── .dockerignore
 ├── include/BookingService.h
 ├── src/
 │   ├── BookingService.cpp
@@ -28,8 +30,8 @@ MovieBookingService/
 
 ## Requirements
 
-- A C++14 compiler (MSVC 2017+, GCC 5+, Clang 3.8+)
-- CMake 3.10+
+- A C++14 compiler (MSVC 2017+, GCC 7+, Clang 5+)
+- CMake 3.14+
 - Internet access on first build to fetch GoogleTest
 - Pass `-DBUILD_TESTING=OFF` to skip test building
 
@@ -40,16 +42,15 @@ MovieBookingService/
 Option 1: from a Visual Studio Developer Command Prompt with MSVC installed:
 
 ```cmd
-mkdir build
 cmake -S . -B build
 cmake --build build --config Release
 build\bin\movie_booking_cli.exe
 ```
 
-Tests:
+Tests (build first, then run from `build`):
 
 ```cmd
-mkdir build
+cmake --build build --config Release
 cd build
 ctest -C Release --output-on-failure
 ```
@@ -57,7 +58,6 @@ ctest -C Release --output-on-failure
 Option 2: from an MSYS2 / MinGW shell or when using GCC/Clang on Windows:
 
 ```bash
-mkdir build
 cmake -G "MinGW Makefiles" -S . -B build
 cmake --build build
 ./build/bin/movie_booking_cli.exe
@@ -66,9 +66,12 @@ cmake --build build
 Tests:
 
 ```bash
+cmake --build build
 cd build
 ctest --output-on-failure
 ```
+
+Run tests directly: `./build/bin/booking_tests.exe`
 
 ### Linux / macOS
 
@@ -81,8 +84,11 @@ cmake --build build -j
 Tests:
 
 ```bash
+cmake --build build -j
 cd build && ctest --output-on-failure
 ```
+
+Run tests directly: `./build/bin/booking_tests`
 
 ### Skipping tests
 
@@ -92,31 +98,17 @@ cmake -S . -B build -DBUILD_TESTING=OFF
 
 ## Docker (optional)
 
-Docker support is additive: your current local CMake workflow stays unchanged.
+Initial Docker support is included (`Dockerfile`, `.dockerignore`). It is optional — the normal CMake workflow above still works without Docker.
 
-Prerequisite:
-
-- Docker Engine (Linux) or Docker Desktop with Linux containers (Windows/macOS)
-
-Build runtime image:
+Requires Docker Engine (Linux) or Docker Desktop (Windows/macOS).
 
 ```bash
 docker build -t movie-booking-service .
-```
-
-Run the CLI:
-
-```bash
 docker run --rm -it movie-booking-service
-```
-
-Run tests in Docker:
-
-```bash
 docker build --target test -t movie-booking-service:test .
 ```
 
-The `test` target runs `ctest` during image build and fails if tests fail.
+This is a basic setup and may fail depending on your environment (for example missing runtime libraries or network access during the GoogleTest fetch). Additional adaptation of the `Dockerfile` may be required on your machine.
 
 ## Example session
 
@@ -134,6 +126,9 @@ Movies:
  - m1: Movie1
  - m2: Movie2
  - m3: Movie3
+
+=== Movie Booking ===
+ ...
 > 4
 Movie id: m1
 Theater id: t1
@@ -141,9 +136,17 @@ Seats (e.g. a1,a2): a1,a2,a3
 Booked: a1 a2 a3
 ```
 
+On failure, the CLI prints `Failed: <message>` using `BookingResult::message` (for example, unknown showing or seat already booked).
+
 ## API
 
-Defined in `include/BookingService.h`. The public surface is:
+Defined in `include/BookingService.h`.
+
+**Types:** `MovieId`, `TheaterId`, and `SeatId` are `std::string` aliases. `Movie` and `Theater` hold `id` and `title`/`name`. `BookingResult` contains `success`, `error` (`BookingError`), `message`, and `bookedSeats`.
+
+**BookingError values:** `None`, `EmptyRequest`, `UnknownShowing`, `DuplicateSeats`, `UnknownSeat`, `SeatAlreadyBooked`.
+
+`BookingService` is non-copyable and non-movable (copy and move operations are deleted).
 
 ```cpp
 class BookingService {
@@ -151,31 +154,12 @@ public:
     BookingService();
 
     std::vector<Movie> listMovies() const;
-    std::vector<Theater> listTheatersForMovie(std::string movieId) const;
-    std::vector<SeatId> listAvailableSeats(std::string movieId,
-                                           std::string theaterId) const;
-    BookingResult bookSeats(std::string movieId,
-                            std::string theaterId,
+    std::vector<Theater> listTheatersForMovie(const MovieId& movieId) const;
+    std::vector<SeatId> listAvailableSeats(const MovieId& movieId,
+                                           const TheaterId& theaterId) const;
+    BookingResult bookSeats(const MovieId& movieId,
+                            const TheaterId& theaterId,
                             const std::vector<SeatId>& seats);
 };
 ```
 
-All methods are safe to call concurrently from multiple threads.
-
-## Design notes
-
-- **In-memory only.** No persistence, no database.
-- **Per-showing locking.** Each `(movieId, theaterId)` showing has its own mutex.
-- **All-or-nothing booking.** If any requested seat is invalid or already taken, the request fails with no state change.
-- **Seeded demo data.** The service is initialized with three movies, three theaters, and 20 seats per showing (`a1`..`a20`).
-
-## Tests
-
-The suite covers:
-
-- Listing movies, theaters, and seats
-- Unknown movie/showing handling
-- Single and multi-seat bookings
-- Empty requests, duplicate seat ids, invalid seat ids, already-booked seats
-- All-or-nothing booking semantics
-- Concurrent booking of the same seat with many threads

@@ -5,6 +5,7 @@ FROM ubuntu:24.04 AS base
 RUN apt-get update && apt-get install -y \
     cmake \
     g++ \
+    git \
     make \
     ninja-build \
     && rm -rf /var/lib/apt/lists/*
