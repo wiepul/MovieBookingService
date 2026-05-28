@@ -90,6 +90,34 @@ cd build && ctest --output-on-failure
 cmake -S . -B build -DBUILD_TESTING=OFF
 ```
 
+## Docker (optional)
+
+Docker support is additive: your current local CMake workflow stays unchanged.
+
+Prerequisite:
+
+- Docker Engine (Linux) or Docker Desktop with Linux containers (Windows/macOS)
+
+Build runtime image:
+
+```bash
+docker build -t movie-booking-service .
+```
+
+Run the CLI:
+
+```bash
+docker run --rm -it movie-booking-service
+```
+
+Run tests in Docker:
+
+```bash
+docker build --target test -t movie-booking-service:test .
+```
+
+The `test` target runs `ctest` during image build and fails if tests fail.
+
 ## Example session
 
 ```
